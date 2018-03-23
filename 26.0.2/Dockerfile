@@ -26,6 +26,9 @@ ENV PATH="$PATH:$ANDROID_HOME/tools/bin"
 RUN yes | sdkmanager "build-tools;$ANDROID_BUILD_TOOLS_VERSION"
 RUN yes | sdkmanager "platform-tools"
 
+RUN yes | sdkmanager "extras;android;m2repository"
+RUN yes | sdkmanager "extras;google;m2repository"
+
 ARG VERSION
 ARG BUILD_DATE
 ARG VCS_REF
