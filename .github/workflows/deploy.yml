@@ -1,0 +1,77 @@
+name: Deployment
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - ".github/**"
+
+  pull_request:
+    branches:
+      - master
+    paths-ignore:
+      - ".github/**"
+
+env:
+  IMAGE_NAME: android-build-tools
+
+jobs:
+  getChangedImageTags:
+    runs-on: ubuntu-latest
+    outputs:
+      changedImageTags: ${{ steps.filter.outputs.filteredPaths }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - id: files
+        name: Get changed files
+        uses: jitterbit/get-changed-files@v1
+        with:
+          format: "json"
+
+      - id: filter
+        name: Filter files
+        uses: inserteffect/github-actions-filter-changed-file-paths@v1.0
+        with:
+          changedFiles: ${{ steps.files.outputs.all }}
+          depth: 1
+
+  uploadPackage:
+    needs: getChangedImageTags
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    strategy:
+      max-parallel: 1
+      matrix:
+        changedImageTags: ${{ fromJSON(needs.getChangedImageTags.outputs.changedImageTags) }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - id: image
+        name: Set image
+        run: |
+          changed_tag=${{ matrix.changedImageTags }}
+          echo "##[set-output name=release;]$(echo ${changed_tag})"
+
+      - name: Build image
+        run: |
+          docker build \
+          --build-arg VERSION=${{steps.image.outputs.release}} \
+          --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+          --build-arg VCS_REF=$(git rev-parse --short HEAD) \
+          -t ${{env.IMAGE_NAME}} ./${{steps.image.outputs.release}}
+
+      - name: Log in to registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Push image
+        run: |
+          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/${{env.IMAGE_NAME}}
+          VERSION=${{steps.image.outputs.release}}
+          docker tag ${{env.IMAGE_NAME}} $IMAGE_ID:$VERSION
+          docker push $IMAGE_ID:$VERSION
