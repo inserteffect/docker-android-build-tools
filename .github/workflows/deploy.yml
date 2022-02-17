@@ -14,13 +14,14 @@ on:
       - ".github/**"
 
 env:
-  IMAGE_NAME: android-build-tools
+  IMAGE: ${{github.repository_owner}}/android-build-tools
+  REGISTRY: ghcr.io
 
 jobs:
   getChangedImageTags:
     runs-on: ubuntu-latest
     outputs:
-      changedImageTags: ${{ steps.filter.outputs.filteredPaths }}
+      changedImageTags: ${{steps.filter.outputs.filteredPaths}}
 
     steps:
       - uses: actions/checkout@v2
@@ -35,7 +36,7 @@ jobs:
         name: Filter files
         uses: inserteffect/github-actions-filter-changed-file-paths@v1.0
         with:
-          changedFiles: ${{ steps.files.outputs.all }}
+          changedFiles: ${{steps.files.outputs.all}}
           depth: 1
 
   uploadPackage:
@@ -47,31 +48,29 @@ jobs:
     strategy:
       max-parallel: 1
       matrix:
-        changedImageTags: ${{ fromJSON(needs.getChangedImageTags.outputs.changedImageTags) }}
+        changedImageTags: ${{fromJSON(needs.getChangedImageTags.outputs.changedImageTags)}}
 
     steps:
       - uses: actions/checkout@v2
 
-      - id: image
-        name: Set image
+      - id: tag
+        name: Set tag
         run: |
-          changed_tag=${{ matrix.changedImageTags }}
-          echo "##[set-output name=release;]$(echo ${changed_tag})"
+          changed_tag=${{matrix.changedImageTags}}
+          echo "##[set-output name=tag;]$(echo ${changed_tag})"
+          echo "##[set-output name=full_path;]$(echo ${{env.REGISTRY}}/${{env.IMAGE}}:$changed_tag)"
 
       - name: Build image
         run: |
           docker build \
-          --build-arg VERSION=${{steps.image.outputs.release}} \
+          --build-arg VERSION=${{steps.tag.outputs.tag}} \
           --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
           --build-arg VCS_REF=$(git rev-parse --short HEAD) \
-          -t ${{env.IMAGE_NAME}} ./${{steps.image.outputs.release}}
+          -t ${{steps.tag.outputs.full_path}} ./${{steps.tag.outputs.tag}}
 
       - name: Log in to registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        run: echo "${{secrets.GITHUB_TOKEN}}" | docker login ghcr.io -u ${{github.actor}} --password-stdin
 
       - name: Push image
         run: |
-          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/${{env.IMAGE_NAME}}
-          VERSION=${{steps.image.outputs.release}}
-          docker tag ${{env.IMAGE_NAME}} $IMAGE_ID:$VERSION
-          docker push $IMAGE_ID:$VERSION
+          docker push ${{steps.tag.outputs.full_path}}
