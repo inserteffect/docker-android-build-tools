@@ -1,5 +1,6 @@
 FROM debian:bullseye-slim
 
+
 ENV ANDROID_BUILD_TOOLS_VERSION=34.0.0
 
 RUN apt-get update && apt-get install -y \
