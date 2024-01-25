@@ -1,4 +1,4 @@
-FROM eclipse-temurin:17-jdk
+FROM eclipse-temurin:17-jdk-jammy
 
 ENV ANDROID_BUILD_TOOLS_VERSION=34.0.0
 
