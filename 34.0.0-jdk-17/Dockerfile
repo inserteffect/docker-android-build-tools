@@ -1,4 +1,4 @@
-FROM eclipse-temurin:17-jdk
+FROM eclipse-temurin:17-jdk-jammy
 
 ENV ANDROID_BUILD_TOOLS_VERSION=34.0.0
 
@@ -18,7 +18,8 @@ RUN cd /tmp \
       && mkdir -p $ANDROID_HOME \
       && unzip "commandlinetools-linux-$ANDROID_COMMAND_LINE_TOOLS_VERSION.zip" -d "$ANDROID_HOME/cmdline-tools" \
       && mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest" \
-      && rm "commandlinetools-linux-$ANDROID_COMMAND_LINE_TOOLS_VERSION.zip"
+      && rm "commandlinetools-linux-$ANDROID_COMMAND_LINE_TOOLS_VERSION.zip" \
+      && chmod -R a+w $ANDROID_HOME
 
 ENV PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin"
 
